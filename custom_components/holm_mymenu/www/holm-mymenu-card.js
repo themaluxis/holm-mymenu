@@ -776,14 +776,14 @@ class HolmMyMenuCard extends HTMLElement {
     return s.slots.filter((sl) => want.includes(sl));
   }
   // tuile en consultation (vues « Menu du jour » et « Semaine ») : recettes, puis ingrédients, puis notes
-  _tile(day, sl, small = false) {
+  _tile(day, sl, small = false, cls = "") {
     const s = this._s, entries = (s.plan[day] || {})[sl] || [];
     const recs = entries.filter((e) => e.type === "recipe" && s.recipes[e.recipe_id]);
     const ings = entries.filter((e) => e.type === "ingredient" && s.ingredients[e.ingredient_id]);
     const txts = entries.filter((e) => e.type === "text");
     const bg = heroBg(recs.map((e) => s.recipes[e.recipe_id]));
     const top = recs.length || txts.length;
-    return `<div class="tslot ${small ? "sm" : ""}">
+    return `<div class="tslot ${small ? "sm" : ""} ${cls}">
       <div class="thero ${bg.cls} ${!top && ings.length ? "mini" : ""}" ${bg.attr}>${bg.html}
         <span class="sl">${SLOT_LBL[sl]}</span>
         ${top ? `<div class="tents">
@@ -793,8 +793,10 @@ class HolmMyMenuCard extends HTMLElement {
       ${ings.length ? `<div class="tings">${ings.map((e) => { const i = s.ingredients[e.ingredient_id]; return `<button class="tchip" data-act="view-ing" data-id="${i.id}">${i.image ? `<span class="ti" style="background-image:url('${esc(i.image)}')"></span>` : `<span class="ti no"><ha-icon icon="mdi:food-apple-outline"></ha-icon></span>`}<span class="tn">${esc(i.name)}</span></button>`; }).join("")}</div>` : ""}</div>`;
   }
   _today() {
-    const k = iso(new Date()), slots = this._viewSlots();
-    return `<div class="todayv n${slots.length}">${slots.map((sl) => this._tile(k, sl)).join("")}</div>`;
+    // repas en cours mis en avant : le midi jusqu'à 14 h, le soir ensuite (le midi passe alors en retrait)
+    const now = new Date(), k = iso(now), slots = this._viewSlots(), cur = now.getHours() < 14 ? "midi" : "soir";
+    const cls = (sl) => slots.length < 2 ? "" : sl === cur ? "now" : sl === "midi" ? "past" : "";
+    return `<div class="todayv n${slots.length}">${slots.map((sl) => this._tile(k, sl, false, cls(sl))).join("")}</div>`;
   }
   _weekRO() {
     const w0 = this._week, today = iso(new Date()), slots = this._viewSlots();
@@ -2075,7 +2077,7 @@ class HolmMyMenuCard extends HTMLElement {
   }
 
   getCardSize() { return this._c && this._c.view === "today" ? 3 : this._c && this._c.view === "week" ? 8 : 10; }
-  getGridOptions() { return this._c && this._c.view === "today" ? { columns: 6, rows: "auto", min_columns: 4 } : { columns: 12, rows: "auto", min_columns: 6 }; }
+  getGridOptions() { return this._c && this._c.view === "today" ? { columns: 12, rows: "auto", min_columns: 6 } : { columns: 12, rows: "auto", min_columns: 6 }; }
   static getStubConfig() { return { title: "Menus" }; }
   static getConfigElement() { return document.createElement("holm-mymenu-card-editor"); }
 }
@@ -2161,6 +2163,9 @@ input.search, .f { flex:1; min-width:0; box-sizing:border-box; padding:9px 12px;
 .sx.add { align-items:center; justify-content:center; flex:1; color:var(--secondary-text-color); }
 .todayv { display:grid; grid-template-columns:1fr 1fr; gap:10px; } .todayv.n1 { grid-template-columns:1fr; } @container (max-width:360px) { .todayv { grid-template-columns:1fr; } }
 .tslot { position:relative; border-radius:16px; display:flex; flex-direction:column; overflow:hidden; background:var(--sf); }
+.noframe .todayv .tslot { border-radius:var(--ha-card-border-radius, 16px); background:var(--ha-card-background, var(--card-background-color, var(--sf))); box-shadow:var(--ha-card-box-shadow, none); }
+.todayv .tslot.now { outline:2px solid var(--ac); outline-offset:-2px; } .todayv .tslot.past { opacity:.6; }
+@container (min-width:560px) { .todayv .thero { min-height:150px; } }
 .thero { position:relative; flex:1; min-height:130px; padding:10px 12px; display:flex; flex-direction:column; justify-content:flex-end; gap:6px; box-sizing:border-box; }
 .thero.img { background-image:linear-gradient(180deg, rgba(0,0,0,.05) 20%, rgba(0,0,0,.78)), var(--img); background-size:cover; background-position:center; color:#fff; }
 .thero.mini { flex:none; min-height:38px; }
